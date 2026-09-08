@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# pytest
+.pytest_cache/
+.coverage
+coverage-report/
+
+# Generated reports (can be regenerated)
+test-report.html
+test-report.pdf
+test-results.json
+performance-report.html
+perf-whitebox-report.html
+whitebox-report.html
+
+# OS
+Thumbs.db
+.DS_Store
