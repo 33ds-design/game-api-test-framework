@@ -47,7 +47,7 @@ class TestInventoryBugs:
         pid = player["player_id"]
 
         # 添加 25 个物品（超过 20 格上限）
-        r = requests.post(f"{BASE}/api/inventory/add", json={
+        requests.post(f"{BASE}/api/inventory/add", json={
             "player_id": pid,
             "item_id": "gem",
             "quantity": 25

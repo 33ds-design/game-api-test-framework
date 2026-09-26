@@ -3,11 +3,12 @@
 通过真实 HTTP 请求对 Uvicorn 服务施压，用墙钟时间计算吞吐量
 覆盖: 登录 / 战斗 / 背包 / 商店 / 混合场景 / 并发可扩展性
 """
-import json
-import time
-import statistics
-import itertools
 import asyncio
+import itertools
+import json
+import statistics
+import time
+
 import httpx
 
 from server_config import BASE_URL
@@ -36,7 +37,7 @@ async def run_load_test(concurrency: int, total_requests: int, request_fn):
                 try:
                     r = await request_fn(client)
                     ok = r.status_code == 200
-                except Exception:
+                except httpx.HTTPError:
                     ok = False
                 latencies.append((time.perf_counter() - t0) * 1000)
                 if not ok:

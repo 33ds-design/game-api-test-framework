@@ -78,7 +78,7 @@ class TestMPSystem:
         pid = player["player_id"]
 
         # 连续施放火球术直到 MP 耗尽 (50 / 10 = 5 次)
-        for i in range(5):
+        for _ in range(5):
             requests.post(f"{BASE}/api/combat", json={
                 "player_id": pid, "skill_id": "fireball"
             })
@@ -137,7 +137,8 @@ class TestCombatBugs:
 
         if crit_damage is not None:
             # 火球术基础伤害 30，暴击应为 60
-            assert crit_damage == 60, f"BUG #2: 暴击伤害 {crit_damage} != 预期 60 (实际为 {crit_damage}, 疑似 x1.5 而非 x2)"
+            msg = f"BUG #2: 暴击伤害 {crit_damage} != 预期 60 (实际为 {crit_damage}, 疑似 x1.5 而非 x2)"
+            assert crit_damage == 60, msg
         else:
             pytest.skip("50 次施放未触发暴击，概率问题")
 

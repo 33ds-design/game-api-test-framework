@@ -13,3 +13,7 @@ Pillow>=10.0.0
 # 缺这个包时导入失败不会被 sys.modules 缓存，于是每次请求都重扫一遍 sys.path，
 # 压测吞吐会腰斩。装上它只是让该导入命中缓存，属于性能必需项。
 sniffio>=1.3.1
+# 静态检查：ruff 负责 lint，mypy 负责类型检查，配置见 pyproject.toml
+ruff>=0.16.0
+mypy>=2.3.0
+pre-commit>=4.0.0

@@ -45,7 +45,10 @@ OUTPUT_DIR = _resolve_output_dir()
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-def create_terminal_screenshot(filename, title, lines, width=1100, line_height=22, bg="#1e1e1e", fg="#cccccc", title_color="#569cd6"):
+def create_terminal_screenshot(
+    filename, title, lines, width=1100, line_height=22,
+    bg="#1e1e1e", fg="#cccccc", title_color="#569cd6",
+):
     height = 60 + len(lines) * line_height
     img = Image.new("RGB", (width, height), bg)
     draw = ImageDraw.Draw(img)
@@ -160,7 +163,9 @@ whitebox_lines = [
     "",
     "======================== 24 passed, 1 warning in 2.47s ========================",
 ]
-create_terminal_screenshot("whitebox_test_terminal.png", "$ pytest tests/test_whitebox.py --cov=mock_server -v", whitebox_lines)
+create_terminal_screenshot(
+    "whitebox_test_terminal.png", "$ pytest tests/test_whitebox.py --cov=mock_server -v", whitebox_lines
+)
 
 # Coverage report summary
 coverage_lines = [
@@ -192,6 +197,8 @@ coverage_lines = [
     "  Partial:          1",
     "  Branch Coverage: 91%",
 ]
-create_terminal_screenshot("coverage_report_terminal.png", "$ pytest --cov=mock_server --cov-report=term-missing", coverage_lines, width=700)
+create_terminal_screenshot(
+    "coverage_report_terminal.png", "$ pytest --cov=mock_server --cov-report=term-missing", coverage_lines, width=700
+)
 
 print("\nAll screenshots generated!")

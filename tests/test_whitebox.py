@@ -2,13 +2,15 @@
 白盒测试 — 基于代码结构的分支/路径覆盖测试
 直接导入 mock_server 模块，测试内部逻辑分支
 """
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from mock_server import app, players, inventory, combat_log
 from fastapi.testclient import TestClient
+
+from mock_server import app, combat_log, inventory, players
 
 
 @pytest.fixture(autouse=True)

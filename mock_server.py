@@ -2,12 +2,12 @@
 Game Server Mock — 模拟游戏服务端 API
 包含故意植入的 Bug，供自动化测试发现
 """
+import random
+
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
-import random
-import uvicorn
 
 from server_config import HOST, PORT
 
@@ -15,9 +15,9 @@ app = FastAPI(title="Game Server Mock", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # ---- In-memory game state ----
-players = {}
-inventory = {}
-combat_log = []
+players: dict[str, dict] = {}
+inventory: dict[str, list[dict]] = {}
+combat_log: list[dict] = []
 
 class LoginRequest(BaseModel):
     username: str
@@ -26,7 +26,7 @@ class LoginRequest(BaseModel):
 class CombatRequest(BaseModel):
     player_id: str
     skill_id: str
-    target_id: Optional[str] = "monster_001"
+    target_id: str | None = "monster_001"
 
 class TradeRequest(BaseModel):
     player_id: str
@@ -93,7 +93,7 @@ def combat(req: CombatRequest):
 
     # Bug #2: 伤害计算错误 — 暴击时伤害应该 x2，但这里用了 x1.5
     is_crit = random.random() < 0.2
-    if is_crit:
+    if is_crit:  # noqa: SIM108  # 显式分支便于就地标注植入的 BUG
         actual_damage = int(skill["damage"] * 1.5)  # BUG: 应该 * 2
     else:
         actual_damage = skill["damage"]
@@ -138,7 +138,9 @@ def add_item(req: TradeRequest):
         pass  # BUG: 应该 raise HTTPException(400, "背包已满")
 
     for _ in range(req.quantity):
-        inventory[req.player_id].append({"item_id": req.item_id, "uid": f"{req.item_id}_{len(inventory[req.player_id])}"})
+        inventory[req.player_id].append(
+            {"item_id": req.item_id, "uid": f"{req.item_id}_{len(inventory[req.player_id])}"}
+        )
 
     return {"code": 0, "data": {"current_count": len(inventory[req.player_id])}}
 
@@ -171,7 +173,9 @@ def buy_item(req: TradeRequest):
 
     # 添加物品到背包
     for _ in range(req.quantity):
-        inventory[req.player_id].append({"item_id": req.item_id, "uid": f"{req.item_id}_{len(inventory[req.player_id])}"})
+        inventory[req.player_id].append(
+            {"item_id": req.item_id, "uid": f"{req.item_id}_{len(inventory[req.player_id])}"}
+        )
 
     return {
         "code": 0,

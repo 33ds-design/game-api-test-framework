@@ -1,12 +1,13 @@
 """
 Pytest 配置 — 启动/关闭 Mock Server
 """
-import pytest
+import os
 import subprocess
 import sys
 import time
+
+import pytest
 import requests
-import os
 
 from server_config import BASE_URL
 

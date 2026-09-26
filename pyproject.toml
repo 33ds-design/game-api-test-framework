@@ -1,0 +1,32 @@
+# 静态检查配置：ruff（lint）+ mypy（类型检查）
+# 本地运行：make lint
+
+[tool.ruff]
+# 代码库既有风格的实际行长集中在 100–122。取 120 与现状一致；
+# 若用 ruff 默认的 88，会引入 70+ 处纯换行改动，把真正的语义变更淹没在噪声里。
+line-length = 120
+target-version = "py312"
+extend-exclude = [".venv", "screenshots"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "PT",  # flake8-pytest-style
+    "BLE", # flake8-blind-except
+]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["mock_server.py", "server_config.py", "conftest.py", "run_tests.py", "generate_screenshots.py", "tests"]
+warn_unused_configs = true
+warn_redundant_casts = true
+no_implicit_optional = true
+# 不要求为既有代码补齐全部注解（那属于重构而非类型检查），
+# 但已写注解的地方必须自洽。

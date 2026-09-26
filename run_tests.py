@@ -1,9 +1,9 @@
 """
 Test Runner — 运行全部测试并生成报告
 """
+import os
 import subprocess
 import sys
-import os
 
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
