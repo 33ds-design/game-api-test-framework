@@ -1,6 +1,6 @@
 # Game API Test Framework
 
-[![CI](https://github.com/33ds-design/game-api-test-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/33ds-design/game-api-test-framework/actions/workflows/ci.yml)
+[![CI](https://github.com/33ds-design/game-api-test-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/33ds-design/game-api-test-framework/actions/workflows/ci.yml) [![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/downloads/) [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 游戏服务端 API 自动化测试框架 — 基于 FastAPI Mock Server + pytest，覆盖功能测试、白盒分支测试、并发性能压测三个维度。
 
@@ -24,13 +24,19 @@ game-api-test-framework/
 ├── server_config.py            # HOST/PORT/BASE_URL 单一来源 (可用 MOCK_HOST/MOCK_PORT 覆盖)
 ├── conftest.py                 # pytest fixture (自动管理 Mock Server 生命周期)
 ├── pytest.ini                  # pytest 配置文件
+├── pyproject.toml              # ruff (lint) + mypy (类型检查) 配置
 ├── requirements.txt            # Python 直接依赖 (下限约束)
 ├── requirements.lock           # 依赖版本锁定快照 (pip freeze 生成)
 ├── .python-version             # 声明的 Python 版本 (3.12.10)
+├── .pre-commit-config.yaml     # 提交前钩子 (文件尾换行 / 行尾空格 / YAML 语法 / ruff)
+├── Makefile                    # 常用命令入口 (install/test/perf/lint/fmt/report)
+├── Dockerfile                  # 容器内运行测试
+├── .dockerignore               # 容器构建忽略项
 ├── LICENSE                     # MIT 许可证
+├── CHANGELOG.md                # 变更记录
 ├── run_tests.py                # 测试运行入口
 ├── generate_screenshots.py     # 测试报告截图生成脚本
-├── .github/workflows/ci.yml    # GitHub Actions CI
+├── .github/workflows/ci.yml    # GitHub Actions CI (lint / test / performance)
 └── tests/
     ├── test_login.py            # 登录系统测试 (功能 + 冒烟)
     ├── test_combat.py           # 战斗系统测试 (功能 + Bug 验证)
@@ -62,7 +68,7 @@ game-api-test-framework/
 ### 白盒分支测试 (24 个)
 - 使用 FastAPI TestClient + pytest-cov（in-process 直连，无网络开销）
 - `mock_server.py` 共 8 个端点，白盒用例实际调用其中 6 个（`get_inventory`、`health` 未被调用）
-- 语句覆盖率 95% (92/97 语句，未覆盖行 148-150 / 194 / 198)
+- 语句覆盖率 95% (91/96 语句，未覆盖行 150-152 / 198 / 202)
 - 分支覆盖率 91% (29/32，另有 1 个部分覆盖分支)
 - 语句与分支合并口径下 `--cov-branch` 显示 94%
 
@@ -114,14 +120,50 @@ python run_tests.py
 > `import sniffio`（见 `httpcore/_synchronization.py`），缺包时该导入失败不会被
 > `sys.modules` 缓存，每次请求都要重扫 `sys.path`，压测吞吐会掉一半（实测 314 → 166 RPS）。
 
+### 用 Makefile 简化命令
+
+```bash
+make install   # 安装依赖
+make test      # 功能 / 白盒 / 缺陷测试（带覆盖率，不含压测）
+make perf      # 并发压测
+make lint      # ruff + mypy 静态检查
+make report    # 运行测试并生成报告与截图
+make help      # 查看全部目标
+```
+
+> **压测不要加 `--cov`**：`pytest-cov` 的 `sys.settrace` 作用于整个进程，而压测客户端与测试代码同进程，
+> 插桩会显著拉长客户端侧耗时。实测同一台机器上健康检查 `p95` 从 445ms 涨到 1326ms，直接击穿 1000ms 断言。
+> CI 同样是分开跑的：`test` 作业带覆盖率但排除压测，`performance` 作业跑压测且不带覆盖率。
+
+### 启用提交前钩子
+
+```bash
+.\.venv\Scripts\python.exe -m pre_commit install
+```
+
+之后每次 `git commit` 自动跑 ruff 与基础格式检查；手动全量检查用 `pre-commit run --all-files`。
+
+### 容器内运行
+
+```bash
+docker build -t game-api-test .
+docker run --rm game-api-test              # 默认跑功能 / 白盒 / 缺陷用例
+docker run --rm game-api-test make perf    # 覆盖命令以运行压测
+```
+
 ## 工程化配置
 
 | 项 | 文件 | 说明 |
 |----|------|------|
-| CI | `.github/workflows/ci.yml` | GitHub Actions，两个作业：`test` 跑功能/白盒/缺陷用例并统计覆盖率（阻塞门禁）；`performance` 单独跑压测，`continue-on-error: true` 非阻塞 |
+| CI | `.github/workflows/ci.yml` | GitHub Actions，三个作业：`lint` 跑 ruff + mypy（阻塞门禁）；`test` 跑功能/白盒/缺陷用例并统计覆盖率（阻塞门禁）；`performance` 单独跑压测，`continue-on-error: true` 非阻塞 |
+| 静态检查 | `pyproject.toml` | ruff（lint，`line-length = 120`）+ mypy（类型检查）。`make lint` 本地与 CI 共用同一套命令 |
+| 提交钩子 | `.pre-commit-config.yaml` | 文件尾换行、行尾空格、YAML/TOML 语法、合并冲突标记、大文件拦截、`ruff check --fix`。首次使用需执行 `pre-commit install` |
+| 任务入口 | `Makefile` | `install` / `test` / `perf` / `lint` / `fmt` / `report`，`make help` 查看 |
+| 容器化 | `Dockerfile`、`.dockerignore` | 基于 `python:3.12-slim`，默认跑功能/白盒/缺陷用例 |
 | 许可证 | `LICENSE` | MIT |
-| 依赖锁定 | `requirements.lock` | `pip freeze` 快照，固定 35 个包（含传递依赖）的精确版本 |
+| 依赖锁定 | `requirements.lock` | `pip freeze` 快照，固定 51 个包（含传递依赖）的精确版本 |
 | Python 版本 | `.python-version` | `3.12.10`，CI 用 `actions/setup-python` 的 `python-version-file` 读取 |
+| 变更记录 | `CHANGELOG.md` | 按日期归档，格式参考 Keep a Changelog |
 
 **压测为何在 CI 里非阻塞**：压测的延迟断言（健康检查 `p95 < 1000ms`、登录 `p95 < 200ms`）强依赖 runner 的 CPU 与调度。
 本机 50 并发健康检查实测 `p95` 已到 445ms，共享 runner 上更容易抖动。`error_rate` 断言稳定，延迟断言只用于拦截严重退化，
@@ -137,7 +179,7 @@ CI 跑在 ubuntu runner，用 `requirements.txt` 的版本区间解析更稳妥�
 | 总测试用例 | 51 |
 | 测试结果 | 45 passed / 6 xfailed |
 | 缺陷复现 | 6/6 复现用例均以 xfail 显式登记 |
-| 语句覆盖率 | 95% (92/97 语句) |
+| 语句覆盖率 | 95% (91/96 语句) |
 | 分支覆盖率 | 91% (29/32 分支) |
 | 全场景错误率 | 0.0% |
 | 最高吞吐量 | 1354.0 RPS (扩展性测试 5 并发) |
@@ -155,7 +197,7 @@ CI 跑在 ubuntu runner，用 `requirements.txt` 的版本区间解析更稳妥�
 | add_item() | 全覆盖 |
 | buy_item() | 全覆盖 |
 | get_combat_log() | 全覆盖 |
-| get_inventory() | 未覆盖（行 148-150） |
-| health() | 未覆盖（行 194） |
+| get_inventory() | 未覆盖（行 150-152） |
+| health() | 未覆盖（行 198） |
 
 未覆盖的 5 行 = `get_inventory()` 全部 3 行 + `health()` 返回行 + `__main__` 入口行（后者不计入有效覆盖）。
