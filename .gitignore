@@ -23,3 +23,6 @@ whitebox-report.html
 # OS
 Thumbs.db
 .DS_Store
+
+# Generated screenshots (regenerable via generate_screenshots.py)
+screenshots/
