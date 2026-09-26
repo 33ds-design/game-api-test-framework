@@ -1,0 +1,42 @@
+# 依赖版本锁定快照 — 由 `python -m pip freeze` 生成，请勿手工编辑。
+# 重新生成（在已装好依赖的虚拟环境中）：
+#   .\.venv\Scripts\python.exe -m pip freeze > requirements.lock
+# 安装到完全一致的环境：
+#   .\.venv\Scripts\python.exe -m pip install -r requirements.lock
+# 该快照在 Windows + Python 3.12.10 下采集，含平台相关包（如 colorama），
+# 用于同平台复现；CI 走 requirements.txt 以适配 Linux runner。
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.14.2
+certifi==2026.7.22
+charset-normalizer==3.5.1
+click==8.5.0
+colorama==0.4.6
+coverage==7.16.1
+fastapi==0.141.1
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.20
+iniconfig==2.3.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+packaging==26.3
+pillow==12.3.0
+pluggy==1.6.0
+pydantic==2.13.5
+pydantic_core==2.46.5
+Pygments==2.21.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+pytest-html==4.2.0
+pytest-json-report==1.5.0
+pytest-metadata==3.1.1
+requests==2.34.2
+sniffio==1.3.1
+starlette==1.7.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+urllib3==2.8.0
+uvicorn==0.54.0
