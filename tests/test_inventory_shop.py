@@ -5,7 +5,7 @@
 import pytest
 import requests
 
-BASE = "http://127.0.0.1:18080"
+from server_config import BASE_URL as BASE
 
 
 @pytest.fixture(scope="class")
@@ -41,6 +41,7 @@ class TestInventorySmoke:
 class TestInventoryBugs:
     """背包系统 Bug 验证"""
 
+    @pytest.mark.xfail(strict=True, reason="BUG-004: 背包缺少 20 格上限校验")
     def test_bug_inventory_capacity(self, player):
         """BUG #4: 背包超过 20 格应拒绝添加但实际没有"""
         pid = player["player_id"]
@@ -78,6 +79,8 @@ class TestShopSystem:
         assert r.status_code == 200
         assert gold_before - r.json()["data"]["gold_remaining"] == 50
 
+    @pytest.mark.bug
+    @pytest.mark.xfail(strict=True, reason="BUG-005: 批量购买只扣单件价格（5 件扣 50 而非 250）")
     def test_buy_multiple_items(self, player):
         """购买多件物品 — 金币应按总价扣除"""
         pid = player["player_id"]
@@ -95,6 +98,8 @@ class TestShopSystem:
         # BUG #5: 批量购买只扣一件的钱 (50)
         assert actual_cost == 250, f"BUG #5: 批量购买 5 件应扣 250 金币，实际扣除 {actual_cost}"
 
+    @pytest.mark.bug
+    @pytest.mark.xfail(strict=True, reason="BUG-006: 商店缺少金币充足性校验，金币不足仍返回 200")
     def test_insufficient_gold(self, player):
         """金币不足时应返回错误"""
         pid = player["player_id"]
