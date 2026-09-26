@@ -1,11 +1,47 @@
-"""
-Generate terminal-style screenshots for performance and whitebox test results.
-Uses PIL to render monospace text as PNG images.
-"""
-from PIL import Image, ImageDraw, ImageFont
-import os
+"""渲染性能/白盒测试结果为终端风格 PNG 截图。
 
-OUTPUT_DIR = r"d:\QA\article-images"
+输出目录优先级：命令行参数 > 环境变量 SCREENSHOT_DIR > 项目内 screenshots/
+依赖 Pillow（见 requirements.txt）。
+"""
+import os
+import sys
+
+from PIL import Image, ImageDraw, ImageFont
+
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# 各平台常见等宽字体，按顺序取第一个存在的
+MONO_FONT_CANDIDATES = [
+    ("C:/Windows/Fonts/consola.ttf", "C:/Windows/Fonts/consolab.ttf"),            # Windows
+    ("/System/Library/Fonts/Menlo.ttc", "/System/Library/Fonts/Menlo.ttc"),       # macOS
+    ("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+     "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"),                 # Debian / Ubuntu
+    ("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+     "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf"),             # RHEL / Fedora
+]
+
+
+def _resolve_output_dir() -> str:
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+    return os.environ.get("SCREENSHOT_DIR") or os.path.join(PROJECT_ROOT, "screenshots")
+
+
+def _load_mono_fonts(size: int = 14):
+    """按平台候选表找等宽字体；全部找不到时降级到 Pillow 内置位图字体。"""
+    for regular, bold in MONO_FONT_CANDIDATES:
+        if not os.path.exists(regular):
+            continue
+        try:
+            regular_font = ImageFont.truetype(regular, size)
+            bold_font = ImageFont.truetype(bold, size) if os.path.exists(bold) else regular_font
+        except OSError:
+            continue
+        return regular_font, bold_font
+    return ImageFont.load_default(), ImageFont.load_default()
+
+
+OUTPUT_DIR = _resolve_output_dir()
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
@@ -14,12 +50,7 @@ def create_terminal_screenshot(filename, title, lines, width=1100, line_height=2
     img = Image.new("RGB", (width, height), bg)
     draw = ImageDraw.Draw(img)
 
-    try:
-        font = ImageFont.truetype("C:/Windows/Fonts/consola.ttf", 14)
-        font_bold = ImageFont.truetype("C:/Windows/Fonts/consolab.ttf", 14)
-    except:
-        font = ImageFont.load_default()
-        font_bold = font
+    font, font_bold = _load_mono_fonts()
 
     y = 15
     draw.text((15, y), title, fill=title_color, font=font_bold)
@@ -45,40 +76,46 @@ def create_terminal_screenshot(filename, title, lines, width=1100, line_height=2
     print(f"Saved: {filepath}")
 
 
+# 以下三组数据均取自 2026-09-26 在本机的一次真实运行
+# (win32 / Python 3.12.10 / pytest 9.1.1)，对应命令见各截图标题。
+# 压测数值随机器负载波动，换机器或换时间需重新采集，勿直接沿用。
+# 标签用 ASCII 缩写 ([health]/[login]…) 而非测试里的中文前缀，
+# 因为渲染字体 Consolas 不含 CJK 字形，中文会渲染成方块。
+
 # Performance test output
 perf_lines = [
     "============================= test session starts =============================",
     "platform win32 -- Python 3.12.10, pytest-9.1.1",
     "",
     "tests/test_performance.py::test_health_check_performance",
-    '[health] {"concurrency": 50, "total": 500, "errors": 0, "p95_ms": 43.39, "rps": 1887.9}',
+    '[health] {"concurrency": 50, "total": 500, "errors": 0, "p95_ms": 408.2, "rps": 323.8}',
     "PASSED",
     "",
     "tests/test_performance.py::test_login_performance",
-    '[login] {"concurrency": 20, "total": 200, "errors": 0, "p95_ms": 15.73, "rps": 1674.8}',
+    '[login] {"concurrency": 20, "total": 200, "errors": 0, "p95_ms": 60.74, "rps": 681.7}',
     "PASSED",
     "",
     "tests/test_performance.py::test_combat_performance",
-    '[combat] {"concurrency": 10, "total": 100, "errors": 0, "p95_ms": 17.52, "rps": 1371.6}',
+    '[combat] {"concurrency": 10, "total": 100, "errors": 0, "p95_ms": 22.37, "rps": 937.2}',
     "PASSED",
     "",
     "tests/test_performance.py::test_inventory_query_performance",
-    '[inventory] {"concurrency": 30, "total": 300, "errors": 0, "p95_ms": 20.01, "rps": 1974.9}',
+    '[inventory] {"concurrency": 30, "total": 300, "errors": 0, "p95_ms": 131.46, "rps": 531.3}',
     "PASSED",
     "",
     "tests/test_performance.py::test_shop_buy_performance",
-    '[shop] {"concurrency": 10, "total": 100, "errors": 0, "p95_ms": 10.83, "rps": 1179.3}',
+    '[shop] {"concurrency": 10, "total": 100, "errors": 0, "p95_ms": 19.53, "rps": 979.4}',
     "PASSED",
     "",
     "tests/test_performance.py::test_mixed_scenario_performance",
-    '[mixed] 15 users, 75 flows, 450 requests, 0 errors, p95_ms: 26.37',
+    '[mixed] 15 users, 75 flows, 450 requests, 0 errors, p95_ms: 60.15',
     "PASSED",
     "",
     "tests/test_performance.py::test_concurrency_scalability",
-    '[scale] 5->605 rps | 10->911 rps | 20->1298 rps | 50->1590 rps',
+    '[scale] 5->1354.0 rps | 10->1025.0 rps | 20->714.5 rps | 50->308.2 rps',
     "PASSED",
     "",
-    "======================== 7 passed in 4.42s =========================",
+    "======================== 7 passed in 11.29s =========================",
 ]
 create_terminal_screenshot("performance_test_terminal.png", "$ pytest tests/test_performance.py -v -s", perf_lines)
 
@@ -113,13 +150,15 @@ whitebox_lines = [
     "tests/test_whitebox.py::TestGetPlayerBranch::test_nonexistent_player PASSED [100%]",
     "",
     "=============================== tests coverage ================================",
-    "Name             Stmts   Miss  Cover   Missing",
-    "----------------------------------------------",
-    "mock_server.py      96      5    95%   146-148, 192, 196",
-    "----------------------------------------------",
+    "______________ coverage: platform win32, python 3.12.10-final-0 _______________",
+    "",
+    "Name             Stmts   Miss  Cover",
+    "------------------------------------",
+    "mock_server.py      96      5    95%",
+    "------------------------------------",
     "TOTAL               96      5    95%",
     "",
-    "======================== 24 passed, 95% coverage in 2.44s ========================",
+    "======================== 24 passed, 1 warning in 2.47s ========================",
 ]
 create_terminal_screenshot("whitebox_test_terminal.png", "$ pytest tests/test_whitebox.py --cov=mock_server -v", whitebox_lines)
 
@@ -132,24 +171,26 @@ coverage_lines = [
     "Missed:         5",
     "Coverage:      95%",
     "",
-    "Covered Modules:",
-    "  [OK] login()          - 4/4 branches covered",
-    "  [OK] get_player()     - 2/2 branches covered",
-    "  [OK] combat()         - 8/8 branches covered",
-    "  [OK] add_item()       - 4/4 branches covered",
-    "  [OK] buy_item()       - 5/5 branches covered",
-    "  [OK] get_combat_log() - 2/2 branches covered",
-    "  [OK] health()         - 1/1 branches covered",
+    "Endpoint Coverage (6 of 8 called):",
+    "  [OK] login()          - full",
+    "  [OK] get_player()     - full",
+    "  [OK] combat()         - full",
+    "  [OK] add_item()       - full",
+    "  [OK] buy_item()       - full",
+    "  [OK] get_combat_log() - full",
+    "  [--] get_inventory()  - not called by whitebox tests",
+    "  [--] health()         - not called by whitebox tests",
     "",
     "Missing Lines (5/96):",
-    "  Lines 146-148: get_inventory() error path (player not found)",
-    "  Line 192:      get_combat_log() with empty log (covered via fixture reset)",
+    "  Lines 146-148: get_inventory() body",
+    "  Line 192:      health() return",
     "  Line 196:      __main__ entry point",
     "",
     "Branch Coverage Summary:",
-    "  Total Branches:  28",
-    "  Covered:         26",
-    "  Branch Coverage: 93%",
+    "  Total Branches:  32",
+    "  Covered:         29",
+    "  Partial:          1",
+    "  Branch Coverage: 91%",
 ]
 create_terminal_screenshot("coverage_report_terminal.png", "$ pytest --cov=mock_server --cov-report=term-missing", coverage_lines, width=700)
 
