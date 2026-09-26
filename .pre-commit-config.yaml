@@ -1,0 +1,23 @@
+# 提交前钩子：lint + 基础格式项 + 配置文件语法校验
+# 首次使用：pre-commit install
+# 手动全量检查：pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=512]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      # 只挂 lint。ruff-format 暂不启用：既有代码尚未整体格式化，
+      # 挂上会在第一次提交时产生跨 10 个文件的纯格式改动，掩盖真实变更。
+      # 需要格式化时手动执行 `make fmt`。
+      - id: ruff-check
+        args: [--fix]

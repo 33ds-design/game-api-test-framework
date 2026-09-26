@@ -1,0 +1,17 @@
+.venv/
+.git/
+.github/
+.pytest_cache/
+__pycache__/
+**/__pycache__/
+*.pyc
+screenshots/
+test-report.html
+test-report.pdf
+test-results.json
+performance-report.html
+whitebox-report.html
+perf-whitebox-report.html
+.coverage
+coverage-report/
+requirements.lock
