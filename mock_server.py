@@ -9,6 +9,8 @@ from typing import Optional
 import random
 import uvicorn
 
+from server_config import HOST, PORT
+
 app = FastAPI(title="Game Server Mock", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -193,4 +195,4 @@ def health():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=18080)
+    uvicorn.run(app, host=HOST, port=PORT)

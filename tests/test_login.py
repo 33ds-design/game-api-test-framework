@@ -5,7 +5,7 @@
 import pytest
 import requests
 
-BASE = "http://127.0.0.1:18080"
+from server_config import BASE_URL as BASE
 
 
 @pytest.mark.smoke
