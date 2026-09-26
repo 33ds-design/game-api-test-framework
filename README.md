@@ -1,5 +1,7 @@
 # Game API Test Framework
 
+[![CI](https://github.com/33ds-design/game-api-test-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/33ds-design/game-api-test-framework/actions/workflows/ci.yml)
+
 游戏服务端 API 自动化测试框架 — 基于 FastAPI Mock Server + pytest，覆盖功能测试、白盒分支测试、并发性能压测三个维度。
 
 ## 项目简介
@@ -22,9 +24,13 @@ game-api-test-framework/
 ├── server_config.py            # HOST/PORT/BASE_URL 单一来源 (可用 MOCK_HOST/MOCK_PORT 覆盖)
 ├── conftest.py                 # pytest fixture (自动管理 Mock Server 生命周期)
 ├── pytest.ini                  # pytest 配置文件
-├── requirements.txt            # Python 依赖
+├── requirements.txt            # Python 直接依赖 (下限约束)
+├── requirements.lock           # 依赖版本锁定快照 (pip freeze 生成)
+├── .python-version             # 声明的 Python 版本 (3.12.10)
+├── LICENSE                     # MIT 许可证
 ├── run_tests.py                # 测试运行入口
 ├── generate_screenshots.py     # 测试报告截图生成脚本
+├── .github/workflows/ci.yml    # GitHub Actions CI
 └── tests/
     ├── test_login.py            # 登录系统测试 (功能 + 冒烟)
     ├── test_combat.py           # 战斗系统测试 (功能 + Bug 验证)
@@ -56,8 +62,9 @@ game-api-test-framework/
 ### 白盒分支测试 (24 个)
 - 使用 FastAPI TestClient + pytest-cov（in-process 直连，无网络开销）
 - `mock_server.py` 共 8 个端点，白盒用例实际调用其中 6 个（`get_inventory`、`health` 未被调用）
-- 语句覆盖率 95% (91/96 语句，未覆盖行 146-148 / 192 / 196)
+- 语句覆盖率 95% (92/97 语句，未覆盖行 148-150 / 194 / 198)
 - 分支覆盖率 91% (29/32，另有 1 个部分覆盖分支)
+- 语句与分支合并口径下 `--cov-branch` 显示 94%
 
 ### 并发性能压测 (7 个)
 - 使用 `httpx.AsyncClient` + `asyncio.gather` + `Semaphore` 发起真实 HTTP 请求，服务端由 `conftest.py` 拉起真实 Uvicorn 进程
@@ -69,7 +76,7 @@ game-api-test-framework/
 
 ## 运行方式
 
-项目依赖 Python 3.12。若系统默认 `python` 是 3.10，直接运行会报 `ModuleNotFoundError`，
+项目依赖 Python 3.12，精确版本记录在 `.python-version`（当前 `3.12.10`）。若系统默认 `python` 是 3.10，直接运行会报 `ModuleNotFoundError`，
 因此推荐在项目内建一个虚拟环境，后续所有命令都用 venv 里的解释器执行
 （`run_tests.py` 与 `conftest.py` 均以 `sys.executable` 拉起 pytest 和 Mock Server，会自动沿用同一个解释器）。
 
@@ -79,6 +86,9 @@ py -3.12 -m venv .venv
 
 # 2) 安装依赖（只需一次）
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# 2b) 需要与锁定快照完全一致的版本时，改装 lock 文件（可选）
+.\.venv\Scripts\python.exe -m pip install -r requirements.lock
 
 # 3) 运行全部测试
 .\.venv\Scripts\python.exe run_tests.py
@@ -104,6 +114,22 @@ python run_tests.py
 > `import sniffio`（见 `httpcore/_synchronization.py`），缺包时该导入失败不会被
 > `sys.modules` 缓存，每次请求都要重扫 `sys.path`，压测吞吐会掉一半（实测 314 → 166 RPS）。
 
+## 工程化配置
+
+| 项 | 文件 | 说明 |
+|----|------|------|
+| CI | `.github/workflows/ci.yml` | GitHub Actions，两个作业：`test` 跑功能/白盒/缺陷用例并统计覆盖率（阻塞门禁）；`performance` 单独跑压测，`continue-on-error: true` 非阻塞 |
+| 许可证 | `LICENSE` | MIT |
+| 依赖锁定 | `requirements.lock` | `pip freeze` 快照，固定 35 个包（含传递依赖）的精确版本 |
+| Python 版本 | `.python-version` | `3.12.10`，CI 用 `actions/setup-python` 的 `python-version-file` 读取 |
+
+**压测为何在 CI 里非阻塞**：压测的延迟断言（健康检查 `p95 < 1000ms`、登录 `p95 < 200ms`）强依赖 runner 的 CPU 与调度。
+本机 50 并发健康检查实测 `p95` 已到 445ms，共享 runner 上更容易抖动。`error_rate` 断言稳定，延迟断言只用于拦截严重退化，
+因此不设为阻塞门禁——失败仍会在 Actions 里以红叉暴露，只是不阻断合并。
+
+**CI 为何装 `requirements.txt` 而非 `requirements.lock`**：lock 快照采集自 Windows + Python 3.12.10，含平台相关包（如 `colorama`）。
+CI 跑在 ubuntu runner，用 `requirements.txt` 的版本区间解析更稳妥；lock 用于同平台（本地/开发机）精确复现。
+
 ## 测试结果
 
 | 指标 | 数值 |
@@ -111,7 +137,7 @@ python run_tests.py
 | 总测试用例 | 51 |
 | 测试结果 | 45 passed / 6 xfailed |
 | 缺陷复现 | 6/6 复现用例均以 xfail 显式登记 |
-| 语句覆盖率 | 95% (91/96 语句) |
+| 语句覆盖率 | 95% (92/97 语句) |
 | 分支覆盖率 | 91% (29/32 分支) |
 | 全场景错误率 | 0.0% |
 | 最高吞吐量 | 1354.0 RPS (扩展性测试 5 并发) |
@@ -129,7 +155,7 @@ python run_tests.py
 | add_item() | 全覆盖 |
 | buy_item() | 全覆盖 |
 | get_combat_log() | 全覆盖 |
-| get_inventory() | 未覆盖（行 146-148） |
-| health() | 未覆盖（行 192） |
+| get_inventory() | 未覆盖（行 148-150） |
+| health() | 未覆盖（行 194） |
 
 未覆盖的 5 行 = `get_inventory()` 全部 3 行 + `health()` 返回行 + `__main__` 入口行（后者不计入有效覆盖）。
